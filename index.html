@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0d1117">
+<meta name="description" content="PillCare — Your daily medication reminder">
+<link rel="manifest" href="manifest.json">
+<title>PillCare — Pill Reminder</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1e2530;
+    --accent: #58d9b4;
+    --accent2: #3db89a;
+    --warn: #f0a45a;
+    --danger: #e05c5c;
+    --text: #e8edf3;
+    --muted: #8b95a2;
+    --border: rgba(88,217,180,0.15);
+    --glow: 0 0 24px rgba(88,217,180,0.18);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'DM Sans', sans-serif; min-height: 100vh; overflow-x: hidden; }
+  body::before {
+    content: ''; position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(88,217,180,0.07) 0%, transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .container { max-width: 680px; margin: 0 auto; padding: 40px 20px 80px; position: relative; z-index: 1; }
+
+  header { text-align: center; margin-bottom: 40px; animation: fadeDown 0.6s ease both; }
+  .logo { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+  .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--accent), #3dc9b0); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; box-shadow: var(--glow); }
+  .logo-text { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--accent); }
+  header p { color: var(--muted); font-size: 0.88rem; font-weight: 300; }
+
+  #notifBanner {
+    background: linear-gradient(135deg, rgba(88,217,180,0.1), rgba(61,184,154,0.06));
+    border: 1px solid var(--accent); border-radius: 16px; padding: 16px 20px; margin-bottom: 24px;
+    display: flex; align-items: center; gap: 14px; animation: fadeUp 0.5s ease both;
+  }
+  #notifBanner .bell { font-size: 1.6rem; flex-shrink: 0; }
+  #notifBanner .msg { flex: 1; }
+  #notifBanner .msg strong { display: block; font-size: 0.95rem; color: var(--accent); margin-bottom: 2px; }
+  #notifBanner .msg small { font-size: 0.8rem; color: var(--muted); line-height: 1.4; }
+  .allow-btn { background: var(--accent); color: #0d1117; border: none; border-radius: 10px; padding: 9px 18px; font-family: 'DM Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.2s; flex-shrink: 0; }
+  .allow-btn:hover { opacity: 0.85; }
+  #notifBanner.hidden { display: none; }
+
+  #swStatus { text-align: center; font-size: 0.78rem; padding: 6px 14px; border-radius: 20px; display: inline-block; margin: 0 auto 20px; position: relative; left: 50%; transform: translateX(-50%); }
+  #swStatus.ok  { background: rgba(88,217,180,0.1); color: var(--accent); border: 1px solid var(--accent); }
+  #swStatus.warn { background: rgba(240,164,90,0.1); color: var(--warn); border: 1px solid var(--warn); }
+  #swStatus.err  { background: rgba(224,92,92,0.1); color: var(--danger); border: 1px solid var(--danger); }
+
+  .clock-widget { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px 26px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; animation: fadeUp 0.6s 0.1s ease both; }
+  .clock-time { font-family: 'Playfair Display', serif; font-size: 2.6rem; font-weight: 700; color: var(--accent); letter-spacing: -1px; line-height: 1; }
+  .clock-date { color: var(--muted); font-size: 0.82rem; margin-top: 4px; font-weight: 300; }
+  .test-btn { background: rgba(88,217,180,0.08); border: 1px solid var(--border); border-radius: 10px; padding: 8px 14px; color: var(--accent); font-family: 'DM Sans', sans-serif; font-size: 0.8rem; cursor: pointer; transition: all 0.2s; white-space: nowrap; }
+  .test-btn:hover { background: rgba(88,217,180,0.15); border-color: var(--accent); }
+
+  .summary { display: flex; gap: 12px; margin-bottom: 24px; animation: fadeUp 0.5s 0.15s ease both; }
+  .stat { flex: 1; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px; text-align: center; }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 1.7rem; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 0.72rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  .section-title { font-family: 'Playfair Display', serif; font-size: 1.05rem; font-weight: 700; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+  .section-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  .add-card { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 22px; margin-bottom: 28px; animation: fadeUp 0.6s 0.2s ease both; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .form-row.triple { grid-template-columns: 1fr 1fr 1fr; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 0.75rem; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+  .field input, .field select {
+    background: var(--surface2); border: 1px solid rgba(255,255,255,0.06); border-radius: 10px;
+    padding: 10px 13px; color: var(--text); font-family: 'DM Sans', sans-serif; font-size: 0.9rem;
+    outline: none; transition: border-color 0.2s; -webkit-appearance: none; width: 100%;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: #1e2530; }
+  .field input[type="number"] { -moz-appearance: textfield; }
+  .field input[type="number"]::-webkit-outer-spin-button,
+  .field input[type="number"]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  /* Interval quick-select chips */
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+  .chip {
+    background: var(--surface2); border: 1px solid rgba(255,255,255,0.07); border-radius: 20px;
+    padding: 4px 11px; font-size: 0.75rem; color: var(--muted); cursor: pointer; transition: all 0.15s;
+    font-family: 'DM Sans', sans-serif;
+  }
+  .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .chip.active { background: rgba(88,217,180,0.12); border-color: var(--accent); color: var(--accent); }
+
+  /* Dose preview box */
+  .dose-preview {
+    background: rgba(88,217,180,0.05); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; margin-bottom: 12px; font-size: 0.8rem; color: var(--muted); line-height: 1.6;
+    min-height: 38px; transition: all 0.2s;
+  }
+  .dose-preview .times { color: var(--accent); font-weight: 500; }
+  .dose-preview.warn-preview { border-color: rgba(240,164,90,0.3); color: var(--warn); }
+
+  .color-row { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
+  .color-label { font-size: 0.75rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.5px; }
+  .color-btn { width: 24px; height: 24px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; transition: transform 0.15s, border-color 0.15s; }
+  .color-btn:hover { transform: scale(1.15); }
+  .color-btn.selected { border-color: white; transform: scale(1.15); }
+
+  .add-btn { width: 100%; background: linear-gradient(135deg, var(--accent), #3db89a); border: none; border-radius: 12px; padding: 12px; color: #0d1117; font-family: 'DM Sans', sans-serif; font-size: 0.93rem; font-weight: 600; cursor: pointer; transition: opacity 0.2s, transform 0.15s; }
+  .add-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+  /* Pill list */
+  .pills-wrap { animation: fadeUp 0.6s 0.3s ease both; }
+  .empty-state { text-align: center; padding: 44px 20px; color: var(--muted); }
+  .empty-state .big-icon { font-size: 2.8rem; margin-bottom: 12px; opacity: 0.4; }
+  .empty-state p { font-size: 0.86rem; line-height: 1.7; }
+
+  /* Pill card — multi-dose layout */
+  .pill-card {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 18px;
+    padding: 16px 18px; margin-bottom: 10px;
+    transition: border-color 0.2s, transform 0.15s; animation: slideIn 0.3s ease both;
+  }
+  .pill-card:hover { border-color: rgba(88,217,180,0.3); transform: translateY(-1px); }
+  .pill-card.all-taken { opacity: 0.45; }
+
+  .pill-header { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .pill-color-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .pill-header-info { flex: 1; min-width: 0; }
+  .pill-name { font-weight: 600; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pill-meta { display: flex; gap: 10px; margin-top: 3px; flex-wrap: wrap; }
+  .pill-tag { font-size: 0.73rem; color: var(--muted); display: flex; align-items: center; gap: 3px; }
+
+  /* Dose rows */
+  .dose-rows { display: flex; flex-direction: column; gap: 6px; }
+  .dose-row {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2); border-radius: 10px; padding: 8px 12px;
+    border: 1px solid transparent; transition: border-color 0.15s;
+  }
+  .dose-row.dose-taken { opacity: 0.45; }
+  .dose-row.dose-soon { border-color: rgba(240,164,90,0.25); }
+  .dose-row.dose-now  { border-color: rgba(88,217,180,0.35); }
+  .dose-time { font-size: 0.85rem; font-weight: 600; color: var(--text); min-width: 44px; }
+  .dose-badge { font-size: 0.72rem; padding: 3px 9px; border-radius: 20px; font-weight: 500; flex: 1; }
+  .dose-badge.upcoming { background: rgba(88,217,180,0.1); color: var(--accent); }
+  .dose-badge.soon     { background: rgba(240,164,90,0.12); color: var(--warn); }
+  .dose-badge.now-badge { background: rgba(88,217,180,0.18); color: var(--accent); }
+  .dose-badge.overdue  { background: rgba(224,92,92,0.12); color: var(--danger); }
+  .dose-badge.taken-b  { background: rgba(255,255,255,0.04); color: var(--muted); }
+  .dose-take-btn {
+    width: 28px; height: 28px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.08);
+    background: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; transition: all 0.15s; color: var(--muted); flex-shrink: 0;
+  }
+  .dose-take-btn:hover { background: rgba(88,217,180,0.12); color: var(--accent); border-color: var(--accent); }
+  .dose-take-btn.taken-check { background: rgba(88,217,180,0.1); color: var(--accent); border-color: var(--accent); }
+  .pill-del-btn {
+    width: 28px; height: 28px; border-radius: 7px; border: 1px solid rgba(255,255,255,0.07);
+    background: none; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    font-size: 12px; transition: all 0.15s; color: var(--muted); flex-shrink: 0;
+  }
+  .pill-del-btn:hover { background: rgba(224,92,92,0.1); color: var(--danger); border-color: var(--danger); }
+  .pill-header-actions { display: flex; gap: 6px; align-items: center; }
+
+  #toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 12px 20px; font-size: 0.86rem; color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.45); z-index: 999;
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1); white-space: nowrap; pointer-events: none;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-14px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeUp   { from { opacity:0; transform:translateY(12px); }  to { opacity:1; transform:translateY(0); } }
+  @keyframes slideIn  { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:translateX(0); } }
+
+  @media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+    .form-row.triple { grid-template-columns: 1fr 1fr; }
+    .clock-time { font-size: 2rem; }
+    .summary { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo">
+      <div class="logo-icon">💊</div>
+      <div class="logo-text">Pill<span>Care</span></div>
+    </div>
+    <p>Medication reminders that actually work</p>
+  </header>
+
+  <div id="notifBanner">
+    <div class="bell">🔔</div>
+    <div class="msg">
+      <strong>Enable System Notifications</strong>
+      <small>Reminders will appear in your notification bar — even with tab in background</small>
+    </div>
+    <button class="allow-btn" onclick="requestNotifPermission()">Allow</button>
+  </div>
+
+  <div id="swStatus" class="warn">⏳ Setting up reminders...</div>
+
+  <div class="clock-widget">
+    <div>
+      <div class="clock-time" id="clock">--:--</div>
+      <div class="clock-date" id="clkDate">Loading...</div>
+    </div>
+    <button class="test-btn" onclick="sendTestNotif()">🔔 Test</button>
+  </div>
+
+  <div class="summary">
+    <div class="stat"><div class="stat-num" id="sTotal">0</div><div class="stat-label">Meds</div></div>
+    <div class="stat"><div class="stat-num" id="sTaken">0</div><div class="stat-label">Taken</div></div>
+    <div class="stat"><div class="stat-num" id="sDue">0</div><div class="stat-label">Remaining</div></div>
+  </div>
+
+  <div class="section-title">Add Medication</div>
+  <div class="add-card">
+    <!-- Row 1: Name + Dose -->
+    <div class="form-row">
+      <div class="field">
+        <label>Pill Name</label>
+        <input type="text" id="pillName" placeholder="e.g. Vitamin D" maxlength="30">
+      </div>
+      <div class="field">
+        <label>Dosage</label>
+        <input type="text" id="pillDose" placeholder="e.g. 500mg">
+      </div>
+    </div>
+
+    <!-- Row 2: 1st dose time + interval hrs -->
+    <div class="form-row">
+      <div class="field">
+        <label>1st Dose Time</label>
+        <input type="time" id="pillTime" oninput="updatePreview()">
+      </div>
+      <div class="field">
+        <label>Repeat Every (hours)</label>
+        <input type="number" id="pillInterval" placeholder="e.g. 8" min="1" max="23" oninput="updatePreview()">
+        <div class="chips">
+          <span class="chip" onclick="setChip(4)">4h</span>
+          <span class="chip" onclick="setChip(6)">6h</span>
+          <span class="chip" onclick="setChip(8)">8h</span>
+          <span class="chip" onclick="setChip(12)">12h</span>
+          <span class="chip" onclick="setChip(24)">Once/day</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Live dose preview -->
+    <div class="dose-preview" id="dosePreview">
+      ⏱ Enter a time and interval above to preview today's doses
+    </div>
+
+    <!-- Color -->
+    <div class="color-row">
+      <span class="color-label">Color</span>
+      <div class="color-btn selected" style="background:#58d9b4" data-color="#58d9b4" onclick="pickColor(this)"></div>
+      <div class="color-btn" style="background:#f0a45a" data-color="#f0a45a" onclick="pickColor(this)"></div>
+      <div class="color-btn" style="background:#e05c5c" data-color="#e05c5c" onclick="pickColor(this)"></div>
+      <div class="color-btn" style="background:#7b9ef0" data-color="#7b9ef0" onclick="pickColor(this)"></div>
+      <div class="color-btn" style="background:#c47bf0" data-color="#c47bf0" onclick="pickColor(this)"></div>
+      <div class="color-btn" style="background:#f07b9e" data-color="#f07b9e" onclick="pickColor(this)"></div>
+    </div>
+    <button class="add-btn" onclick="addPill()">+ Add Reminder</button>
+  </div>
+
+  <div class="pills-wrap">
+    <div class="section-title">My Medications</div>
+    <div id="pillList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── Helpers ────────────────────────────────────────────
+function todayKey() { return new Date().toISOString().slice(0,10); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function pad(n) { return String(n).padStart(2,'0'); }
+function hmStr(h, m) { return pad(h) + ':' + pad(m); }
+
+// ── Compute today's dose times for a pill ─────────────
+// Rule: start at pill.time, add intervalHrs repeatedly,
+//       keep only times <= 23:59 today (midnight = 00:00 included)
+function getTodayDoses(pill) {
+  const [startH, startM] = pill.time.split(':').map(Number);
+  const intervalMins = pill.intervalHrs * 60;
+  const doses = [];
+  let totalMins = startH * 60 + startM;
+
+  while (totalMins <= 23 * 60 + 59) {
+    const h = Math.floor(totalMins / 60);
+    const m = totalMins % 60;
+    doses.push(hmStr(h, m));
+    if (pill.intervalHrs >= 24) break; // "once a day" — just one dose
+    totalMins += intervalMins;
+  }
+  return doses;
+}
+
+// ── State ──────────────────────────────────────────────
+let pills      = JSON.parse(localStorage.getItem('pc_pills')  || '[]');
+let takenToday = JSON.parse(localStorage.getItem('pc_taken_' + todayKey()) || '{}');
+let swReg      = null;
+let selectedColor = '#58d9b4';
+let notifiedKeys  = {};
+
+// ── Service Worker ─────────────────────────────────────
+async function initSW() {
+  if (!('serviceWorker' in navigator)) { setStatus('err','❌ Service Worker not supported'); return; }
+  try {
+    swReg = await navigator.serviceWorker.register('sw.js', { scope: './' });
+    await navigator.serviceWorker.ready;
+    setStatus('ok','✅ Notification engine active');
+  } catch(e) {
+    console.warn('[PillCare] SW failed:', e);
+    setStatus('err','⚠️ SW failed — notifications may not work');
+  }
+}
+function setStatus(cls, msg) { const el = document.getElementById('swStatus'); el.className = cls; el.textContent = msg; }
+
+// ── Notification permission ────────────────────────────
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { showToast('❌ Notifications not supported'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    document.getElementById('notifBanner').classList.add('hidden');
+    setStatus('ok','✅ Notification engine active');
+    showToast('🔔 Notifications allowed!');
+    sendTestNotif();
+  } else if (perm === 'denied') {
+    showToast('🚫 Blocked — go to browser Settings to allow');
+    setStatus('err','🚫 Notifications blocked');
+  }
+}
+function updateBanner() {
+  document.getElementById('notifBanner').classList.toggle('hidden', Notification.permission === 'granted');
+}
+
+// ── Fire notification ──────────────────────────────────
+async function fireNotification(name, dose, time, isSnooze = false) {
+  const title = isSnooze ? '⏰ Snooze: ' + name : '💊 Time for ' + name;
+  const body  = isSnooze
+    ? (dose ? dose + '  •  ' : '') + 'Snoozed — take it now!'
+    : (dose ? dose + '  •  Scheduled: ' + time : 'Scheduled: ' + time);
+  // Unique tag for snooze so it's never browser-deduplicated
+  const tag = isSnooze ? 'pill-snooze-' + name + '-' + Date.now() : 'pill-' + name + '-' + time;
+
+  if (swReg && Notification.permission === 'granted') {
+    try {
+      await swReg.showNotification(title, {
+        body, icon: 'https://em-content.zobj.net/source/google/350/pill_1f48a.png',
+        vibrate: [200,100,200,100,300], requireInteraction: true, tag,
+        actions: [{ action:'taken', title:'✅ Taken' }, { action:'snooze', title:'⏰ Snooze 5 min' }],
+        data: { name, dose, time }
+      });
+      return true;
+    } catch(e) { console.warn('[PillCare] notif failed:', e); }
+  }
+  if (Notification.permission === 'granted') { new Notification(title, { body, requireInteraction: true, tag }); return true; }
+  return false;
+}
+
+async function sendTestNotif() {
+  if (Notification.permission !== 'granted') { await requestNotifPermission(); return; }
+  const ok = await fireNotification('Test Pill', '100mg', new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}));
+  showToast(ok ? '🔔 Test notification sent!' : '❌ Could not send');
+}
+
+// ── Reminder check — every 10s ────────────────────────
+let lastMinuteChecked = '';
+function checkReminders() {
+  const now   = new Date();
+  const hm    = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  const nowMs = Date.now();
+
+  if (hm !== lastMinuteChecked) {
+    lastMinuteChecked = hm;
+    pills.forEach(pill => {
+      const doses = getTodayDoses(pill);
+      doses.forEach((doseTime, idx) => {
+        const key = pill.id + '_dose' + idx + '_' + hm;
+        const takenKey = pill.id + '_dose' + idx;
+        if (doseTime === hm && !takenToday[takenKey] && !notifiedKeys[key]) {
+          notifiedKeys[key] = true;
+          const label = doses.length > 1 ? pill.name + ' (dose ' + (idx+1) + '/' + doses.length + ')' : pill.name;
+          fireNotification(label, pill.dose, doseTime, false);
+        }
+      });
+    });
+  }
+
+  // Page-side snooze check
+  const snoozed = JSON.parse(localStorage.getItem('pc_snoozed') || '[]');
+  const remaining = [];
+  snoozed.forEach(s => {
+    if (nowMs >= s.fireAt) fireNotification(s.name, s.dose, s.time, true);
+    else remaining.push(s);
+  });
+  if (remaining.length !== snoozed.length) localStorage.setItem('pc_snoozed', JSON.stringify(remaining));
+
+  if (swReg && swReg.active) swReg.active.postMessage({ type: 'PING' });
+}
+setInterval(checkReminders, 10000);
+checkReminders();
+
+// ── Clock ──────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent = pad(now.getHours()) + ':' + pad(now.getMinutes());
+  document.getElementById('clkDate').textContent = now.toLocaleDateString('en-IN', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+}
+updateClock(); setInterval(updateClock, 1000);
+
+// ── Color picker ───────────────────────────────────────
+function pickColor(el) {
+  document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedColor = el.dataset.color;
+}
+
+// ── Interval chip select ───────────────────────────────
+function setChip(hrs) {
+  document.getElementById('pillInterval').value = hrs;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.textContent.startsWith(hrs + 'h') || (hrs===24 && c.textContent==='Once/day')));
+  updatePreview();
+}
+
+// ── Live dose preview ──────────────────────────────────
+function updatePreview() {
+  const time     = document.getElementById('pillTime').value;
+  const interval = parseInt(document.getElementById('pillInterval').value);
+  const box      = document.getElementById('dosePreview');
+
+  if (!time || !interval || interval < 1) {
+    box.className = 'dose-preview';
+    box.innerHTML = '⏱ Enter a time and interval above to preview today\'s doses';
+    return;
+  }
+  if (interval < 1) {
+    box.className = 'dose-preview warn-preview';
+    box.innerHTML = '⚠️ Interval must be at least 1 hour';
+    return;
+  }
+
+  const fakePill = { time, intervalHrs: interval };
+  const doses    = getTodayDoses(fakePill);
+
+  box.className = 'dose-preview';
+  box.innerHTML = `📅 <strong>${doses.length} dose${doses.length>1?'s':''} today</strong> &nbsp;→&nbsp; <span class="times">${doses.join(' → ')}</span>`;
+}
+
+// ── Add pill ───────────────────────────────────────────
+function addPill() {
+  const name     = document.getElementById('pillName').value.trim();
+  const dose     = document.getElementById('pillDose').value.trim();
+  const time     = document.getElementById('pillTime').value;
+  const interval = parseInt(document.getElementById('pillInterval').value);
+
+  if (!name)              { showToast('⚠️ Enter a pill name'); return; }
+  if (!time)              { showToast('⚠️ Set the 1st dose time'); return; }
+  if (!interval || interval < 1) { showToast('⚠️ Interval must be at least 1 hour'); return; }
+  if (interval > 23)      { showToast('⚠️ Max interval is 23 hours'); return; }
+
+  const doses = getTodayDoses({ time, intervalHrs: interval });
+
+  pills.push({ id: Date.now().toString(), name, dose, time, intervalHrs: interval, color: selectedColor });
+  save(); render();
+
+  document.getElementById('pillName').value     = '';
+  document.getElementById('pillDose').value     = '';
+  document.getElementById('pillTime').value     = '';
+  document.getElementById('pillInterval').value = '';
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  document.getElementById('dosePreview').innerHTML = '⏱ Enter a time and interval above to preview today\'s doses';
+  document.getElementById('dosePreview').className  = 'dose-preview';
+
+  showToast('✅ ' + name + ' added — ' + doses.length + ' dose' + (doses.length>1?'s':'') + ' today');
+}
+
+// ── Mark a specific dose taken ─────────────────────────
+function markDoseTaken(pillId, doseIdx) {
+  const key = pillId + '_dose' + doseIdx;
+  if (takenToday[key]) {
+    delete takenToday[key];
+    showToast('↩️ Marked as not taken');
+  } else {
+    takenToday[key] = new Date().toISOString();
+    const pill = pills.find(p => p.id === pillId);
+    if (pill) clearLocalSnooze(pill.name);
+    showToast('✅ Dose marked as taken!');
+  }
+  localStorage.setItem('pc_taken_' + todayKey(), JSON.stringify(takenToday));
+  render();
+}
+
+function clearLocalSnooze(pillName) {
+  const snoozed  = JSON.parse(localStorage.getItem('pc_snoozed') || '[]');
+  const filtered = snoozed.filter(s => !s.name.startsWith(pillName));
+  localStorage.setItem('pc_snoozed', JSON.stringify(filtered));
+}
+
+function deletePill(id) {
+  pills = pills.filter(p => p.id !== id);
+  save(); render();
+  showToast('🗑️ Removed');
+}
+
+function save() { localStorage.setItem('pc_pills', JSON.stringify(pills)); }
+
+// ── Dose status badge ──────────────────────────────────
+function doseBadge(doseTime, taken) {
+  if (taken) return { label: 'Taken ✓', cls: 'taken-b' };
+  const now  = new Date();
+  const [h,m] = doseTime.split(':').map(Number);
+  const d    = new Date(now); d.setHours(h,m,0,0);
+  const diff = (d - now) / 60000;
+  if (diff < -5)  return { label: 'Overdue', cls: 'overdue' };
+  if (diff <= 0)  return { label: 'Right now!', cls: 'now-badge' };
+  if (diff <= 30) return { label: Math.round(diff) + 'm', cls: 'soon' };
+  const dh = Math.floor(diff/60), dm = Math.round(diff%60);
+  return { label: (dh>0 ? dh+'h ' : '') + dm+'m', cls: 'upcoming' };
+}
+
+// ── Render ─────────────────────────────────────────────
+function render() {
+  const list = document.getElementById('pillList');
+  document.getElementById('sTotal').textContent = pills.length;
+
+  // Count total doses taken today vs total due
+  let totalDosesToday = 0, takenCount = 0;
+  pills.forEach(p => {
+    const doses = getTodayDoses(p);
+    totalDosesToday += doses.length;
+    doses.forEach((_, i) => { if (takenToday[p.id + '_dose' + i]) takenCount++; });
+  });
+  document.getElementById('sTaken').textContent = takenCount;
+  document.getElementById('sDue').textContent   = totalDosesToday - takenCount;
+
+  if (!pills.length) {
+    list.innerHTML = `<div class="empty-state"><div class="big-icon">💊</div><p>No medications yet.<br>Add your first reminder above.</p></div>`;
+    return;
+  }
+
+  const sorted = [...pills].sort((a,b) => a.time.localeCompare(b.time));
+
+  list.innerHTML = sorted.map(p => {
+    const doses    = getTodayDoses(p);
+    const allTaken = doses.every((_,i) => takenToday[p.id + '_dose' + i]);
+    const freqText = p.intervalHrs >= 24 ? 'Once daily' : 'Every ' + p.intervalHrs + 'h · ' + doses.length + ' dose' + (doses.length>1?'s':'') + ' today';
+
+    const doseRowsHtml = doses.map((doseTime, idx) => {
+      const taken   = !!takenToday[p.id + '_dose' + idx];
+      const badge   = doseBadge(doseTime, taken);
+      const rowCls  = taken ? 'dose-taken' : (badge.cls === 'now-badge' ? 'dose-now' : badge.cls === 'soon' ? 'dose-soon' : '');
+      return `<div class="dose-row ${rowCls}">
+        <span class="dose-time">${doseTime}</span>
+        <span class="dose-badge ${badge.cls}">${badge.label}</span>
+        <button class="dose-take-btn ${taken?'taken-check':''}" title="${taken?'Undo':'Mark taken'}" onclick="markDoseTaken('${p.id}',${idx})">
+          ${taken ? '✓' : '○'}
+        </button>
+      </div>`;
+    }).join('');
+
+    return `<div class="pill-card ${allTaken?'all-taken':''}">
+      <div class="pill-header">
+        <div class="pill-color-dot" style="background:${p.color};box-shadow:0 0 8px ${p.color}44"></div>
+        <div class="pill-header-info">
+          <div class="pill-name">${esc(p.name)}</div>
+          <div class="pill-meta">
+            ${p.dose ? `<span class="pill-tag">💊 ${esc(p.dose)}</span>` : ''}
+            <span class="pill-tag">📅 ${esc(freqText)}</span>
+          </div>
+        </div>
+        <div class="pill-header-actions">
+          <button class="pill-del-btn" title="Delete" onclick="deletePill('${p.id}')">✕</button>
+        </div>
+      </div>
+      <div class="dose-rows">${doseRowsHtml}</div>
+    </div>`;
+  }).join('');
+}
+
+// ── Toast ──────────────────────────────────────────────
+let toastTid;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTid);
+  toastTid = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+// ── SW messages ────────────────────────────────────────
+navigator.serviceWorker && navigator.serviceWorker.addEventListener('message', event => {
+  const msg = event.data;
+  if (!msg) return;
+
+  if (msg.type === 'STORE_SNOOZE') {
+    const snoozed = JSON.parse(localStorage.getItem('pc_snoozed') || '[]');
+    snoozed.push({ name: msg.name, dose: msg.dose, time: msg.time, fireAt: msg.fireAt });
+    localStorage.setItem('pc_snoozed', JSON.stringify(snoozed));
+    showToast('⏰ Snoozed! Reminder in 5 minutes.');
+  }
+
+  if (msg.type === 'MARK_TAKEN') {
+    // Find pill and mark dose 0 (or the matching dose) as taken from notification
+    const pill = pills.find(p => p.name === msg.name || msg.name.startsWith(p.name));
+    if (pill) {
+      const doses = getTodayDoses(pill);
+      const idx   = doses.indexOf(msg.time);
+      const key   = pill.id + '_dose' + (idx >= 0 ? idx : 0);
+      if (!takenToday[key]) {
+        takenToday[key] = new Date().toISOString();
+        localStorage.setItem('pc_taken_' + todayKey(), JSON.stringify(takenToday));
+        render();
+        showToast('✅ ' + msg.name + ' marked as taken!');
+      }
+    }
+  }
+
+  if (msg.type === 'CLEAR_SNOOZE') { clearLocalSnooze(msg.name); }
+});
+
+// ── Init ───────────────────────────────────────────────
+(async () => {
+  updateBanner();
+  await initSW();
+  render();
+  setInterval(render, 60000);
+})();
+</script>
+</body>
+</html>
