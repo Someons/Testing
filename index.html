@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PillCare — Your Daily Reminder</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1e2530;
+    --accent: #58d9b4;
+    --accent2: #3db89a;
+    --warn: #f0a45a;
+    --danger: #e05c5c;
+    --text: #e8edf3;
+    --muted: #8b95a2;
+    --border: rgba(88,217,180,0.15);
+    --glow: 0 0 24px rgba(88,217,180,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background effect */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: 50%;
+    transform: translateX(-50%);
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(88,217,180,0.07) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 680px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  header {
+    text-align: center;
+    margin-bottom: 48px;
+    animation: fadeDown 0.6s ease both;
+  }
+  .logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, var(--accent), #3dc9b0);
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+    box-shadow: var(--glow);
+  }
+  .logo-text {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.5px;
+  }
+  .logo-text span { color: var(--accent); }
+  header p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    font-weight: 300;
+    letter-spacing: 0.3px;
+  }
+
+  /* Clock */
+  .clock-widget {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px 28px;
+    margin-bottom: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    animation: fadeUp 0.6s 0.1s ease both;
+  }
+  .clock-time {
+    font-family: 'Playfair Display', serif;
+    font-size: 2.8rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -1px;
+    line-height: 1;
+  }
+  .clock-date {
+    color: var(--muted);
+    font-size: 0.85rem;
+    margin-top: 4px;
+    font-weight: 300;
+  }
+  .notif-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 10px 16px;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.82rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .notif-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .notif-btn.enabled { border-color: var(--accent); color: var(--accent); background: rgba(88,217,180,0.06); }
+  .notif-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+  .notif-btn.enabled .notif-dot { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+
+  /* Add pill section */
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .add-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 24px;
+    margin-bottom: 32px;
+    animation: fadeUp 0.6s 0.2s ease both;
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+    margin-bottom: 14px;
+  }
+  .form-row.single { grid-template-columns: 1fr; }
+
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 0.78rem; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+  .field input, .field select {
+    background: var(--surface2);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 10px;
+    padding: 11px 14px;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.9rem;
+    outline: none;
+    transition: border-color 0.2s;
+    -webkit-appearance: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field select option { background: #1e2530; }
+
+  .color-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    align-items: center;
+  }
+  .color-label { font-size: 0.78rem; color: var(--muted); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; margin-right: 4px; }
+  .color-btn {
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: transform 0.15s, border-color 0.15s;
+  }
+  .color-btn:hover { transform: scale(1.15); }
+  .color-btn.selected { border-color: white; transform: scale(1.15); }
+
+  .add-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #3db89a);
+    border: none;
+    border-radius: 12px;
+    padding: 13px;
+    color: #0d1117;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    letter-spacing: 0.2px;
+  }
+  .add-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+  .add-btn:active { transform: translateY(0); }
+
+  /* Pill list */
+  .pills-wrap { animation: fadeUp 0.6s 0.3s ease both; }
+
+  .empty-state {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--muted);
+  }
+  .empty-state .big-icon { font-size: 3rem; margin-bottom: 14px; opacity: 0.5; }
+  .empty-state p { font-size: 0.88rem; line-height: 1.6; }
+
+  .pill-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: relative;
+    transition: border-color 0.2s, transform 0.15s;
+    animation: slideIn 0.3s ease both;
+  }
+  .pill-card:hover { border-color: rgba(88,217,180,0.3); transform: translateY(-1px); }
+  .pill-card.taken { opacity: 0.45; }
+  .pill-card.taken .pill-name { text-decoration: line-through; }
+
+  .pill-color-dot {
+    width: 14px; height: 14px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    box-shadow: 0 0 10px currentColor;
+  }
+
+  .pill-info { flex: 1; min-width: 0; }
+  .pill-name {
+    font-weight: 600;
+    font-size: 0.97rem;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .pill-meta {
+    display: flex;
+    gap: 10px;
+    margin-top: 3px;
+    flex-wrap: wrap;
+  }
+  .pill-tag {
+    font-size: 0.75rem;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .next-dose {
+    font-size: 0.78rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .next-dose.upcoming { background: rgba(88,217,180,0.1); color: var(--accent); }
+  .next-dose.soon { background: rgba(240,164,90,0.12); color: var(--warn); }
+  .next-dose.overdue { background: rgba(224,92,92,0.12); color: var(--danger); }
+  .next-dose.taken { background: rgba(255,255,255,0.05); color: var(--muted); }
+
+  .pill-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .icon-btn {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+    background: none;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+    transition: all 0.15s;
+    color: var(--muted);
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+  .icon-btn.take-btn:hover { background: rgba(88,217,180,0.12); color: var(--accent); border-color: var(--accent); }
+  .icon-btn.del-btn:hover { background: rgba(224,92,92,0.1); color: var(--danger); border-color: var(--danger); }
+  .icon-btn.taken-check { background: rgba(88,217,180,0.1); color: var(--accent); border-color: var(--accent); }
+
+  /* Toast */
+  #toast {
+    position: fixed;
+    bottom: 28px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 13px 22px;
+    font-size: 0.88rem;
+    color: var(--text);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    z-index: 999;
+    transition: transform 0.35s cubic-bezier(.34,1.56,.64,1);
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* Animations */
+  @keyframes fadeDown {
+    from { opacity: 0; transform: translateY(-16px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(-10px); }
+    to   { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Summary bar */
+  .summary {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .stat {
+    flex: 1;
+    min-width: 100px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .stat-num { font-family: 'Playfair Display', serif; font-size: 1.6rem; font-weight: 700; color: var(--accent); }
+  .stat-label { font-size: 0.74rem; color: var(--muted); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+  @media (max-width: 480px) {
+    .form-row { grid-template-columns: 1fr; }
+    .clock-time { font-size: 2.1rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">
+      <div class="logo-icon">💊</div>
+      <div class="logo-text">Pill<span>Care</span></div>
+    </div>
+    <p>Your daily medication companion</p>
+  </header>
+
+  <!-- Clock -->
+  <div class="clock-widget">
+    <div>
+      <div class="clock-time" id="clock">--:--</div>
+      <div class="clock-date" id="date">Loading...</div>
+    </div>
+    <button class="notif-btn" id="notifBtn" onclick="toggleNotifications()">
+      <span class="notif-dot"></span>
+      <span id="notifLabel">Enable Reminders</span>
+    </button>
+  </div>
+
+  <!-- Summary -->
+  <div class="summary" id="summaryBar" style="display:none">
+    <div class="stat"><div class="stat-num" id="statTotal">0</div><div class="stat-label">Total Pills</div></div>
+    <div class="stat"><div class="stat-num" id="statTaken">0</div><div class="stat-label">Taken Today</div></div>
+    <div class="stat"><div class="stat-num" id="statDue">0</div><div class="stat-label">Remaining</div></div>
+  </div>
+
+  <!-- Add Pill -->
+  <div class="section-title">Add Medication</div>
+  <div class="add-card">
+    <div class="form-row">
+      <div class="field">
+        <label>Pill Name</label>
+        <input type="text" id="pillName" placeholder="e.g. Vitamin D" maxlength="30">
+      </div>
+      <div class="field">
+        <label>Dosage</label>
+        <input type="text" id="pillDose" placeholder="e.g. 500mg">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="field">
+        <label>Reminder Time</label>
+        <input type="time" id="pillTime">
+      </div>
+      <div class="field">
+        <label>Frequency</label>
+        <select id="pillFreq">
+          <option value="daily">Every day</option>
+          <option value="twice">Twice a day</option>
+          <option value="weekly">Weekly</option>
+          <option value="custom">Custom</option>
+        </select>
+      </div>
+    </div>
+    <div class="color-row">
+      <span class="color-label">Colour</span>
+      <div class="color-btn selected" style="background:#58d9b4;color:#58d9b4" data-color="#58d9b4" onclick="selectColor(this)"></div>
+      <div class="color-btn" style="background:#f0a45a" data-color="#f0a45a" onclick="selectColor(this)"></div>
+      <div class="color-btn" style="background:#e05c5c" data-color="#e05c5c" onclick="selectColor(this)"></div>
+      <div class="color-btn" style="background:#7b9ef0" data-color="#7b9ef0" onclick="selectColor(this)"></div>
+      <div class="color-btn" style="background:#c47bf0" data-color="#c47bf0" onclick="selectColor(this)"></div>
+      <div class="color-btn" style="background:#f07b9e" data-color="#f07b9e" onclick="selectColor(this)"></div>
+    </div>
+    <button class="add-btn" onclick="addPill()">+ Add Reminder</button>
+  </div>
+
+  <!-- Pill List -->
+  <div class="pills-wrap">
+    <div class="section-title">My Medications</div>
+    <div id="pillList"></div>
+  </div>
+</div>
+
+<div id="toast">✅ <span id="toastMsg"></span></div>
+
+<script>
+  // ── State ──────────────────────────────────────────────
+  let pills = JSON.parse(localStorage.getItem('pillcare_pills') || '[]');
+  let takenToday = JSON.parse(localStorage.getItem('pillcare_taken_' + todayKey()) || '{}');
+  let selectedColor = '#58d9b4';
+  let notifEnabled = false;
+  let checkInterval = null;
+
+  function todayKey() {
+    return new Date().toISOString().slice(0, 10);
+  }
+
+  // ── Clock ──────────────────────────────────────────────
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    document.getElementById('clock').textContent = h + ':' + m;
+    document.getElementById('date').textContent = now.toLocaleDateString('en-US', {
+      weekday:'long', year:'numeric', month:'long', day:'numeric'
+    });
+  }
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // ── Notifications ──────────────────────────────────────
+  async function toggleNotifications() {
+    if (notifEnabled) {
+      notifEnabled = false;
+      clearInterval(checkInterval);
+      updateNotifBtn();
+      showToast('🔕 Reminders disabled');
+      return;
+    }
+    if (!('Notification' in window)) {
+      showToast('❌ Notifications not supported in this browser');
+      return;
+    }
+    const perm = await Notification.requestPermission();
+    if (perm === 'granted') {
+      notifEnabled = true;
+      startReminderCheck();
+      updateNotifBtn();
+      showToast('🔔 Reminders enabled! You\'ll be notified on time.');
+      new Notification('PillCare Active 💊', {
+        body: 'You will receive reminders for your medications.',
+        icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💊</text></svg>'
+      });
+    } else {
+      showToast('⚠️ Permission denied. Please allow notifications in your browser settings.');
+    }
+  }
+
+  function updateNotifBtn() {
+    const btn = document.getElementById('notifBtn');
+    const lbl = document.getElementById('notifLabel');
+    if (notifEnabled) {
+      btn.classList.add('enabled');
+      lbl.textContent = 'Reminders On';
+    } else {
+      btn.classList.remove('enabled');
+      lbl.textContent = 'Enable Reminders';
+    }
+  }
+
+  function startReminderCheck() {
+    if (checkInterval) clearInterval(checkInterval);
+    checkInterval = setInterval(checkReminders, 30000); // every 30s
+    checkReminders(); // immediate check
+  }
+
+  function checkReminders() {
+    const now = new Date();
+    const hm = String(now.getHours()).padStart(2,'0') + ':' + String(now.getMinutes()).padStart(2,'0');
+    pills.forEach(p => {
+      const key = p.id + '_' + todayKey();
+      if (p.time === hm && !takenToday[p.id]) {
+        // Notify
+        if (Notification.permission === 'granted') {
+          const n = new Notification('💊 Time to take ' + p.name, {
+            body: p.dose ? p.dose + ' — ' + p.freq : 'Don\'t forget your medication!',
+            icon: 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><text y=".9em" font-size="90">💊</text></svg>',
+            requireInteraction: true,
+            tag: 'pill-' + p.id
+          });
+          n.onclick = () => { window.focus(); n.close(); };
+        }
+      }
+    });
+  }
+
+  // ── Color pick ────────────────────────────────────────
+  function selectColor(el) {
+    document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('selected'));
+    el.classList.add('selected');
+    selectedColor = el.dataset.color;
+  }
+
+  // ── Add pill ──────────────────────────────────────────
+  function addPill() {
+    const name = document.getElementById('pillName').value.trim();
+    const dose = document.getElementById('pillDose').value.trim();
+    const time = document.getElementById('pillTime').value;
+    const freq = document.getElementById('pillFreq').value;
+
+    if (!name) { showToast('⚠️ Please enter a pill name'); return; }
+    if (!time) { showToast('⚠️ Please set a reminder time'); return; }
+
+    const pill = {
+      id: Date.now().toString(),
+      name, dose, time, freq,
+      color: selectedColor
+    };
+
+    pills.push(pill);
+    savePills();
+    render();
+    // reset
+    document.getElementById('pillName').value = '';
+    document.getElementById('pillDose').value = '';
+    document.getElementById('pillTime').value = '';
+    showToast('✅ ' + name + ' reminder added!');
+  }
+
+  // ── Mark taken ────────────────────────────────────────
+  function markTaken(id) {
+    if (takenToday[id]) {
+      delete takenToday[id];
+      showToast('↩️ Marked as not taken');
+    } else {
+      takenToday[id] = new Date().toISOString();
+      showToast('✅ Marked as taken!');
+    }
+    localStorage.setItem('pillcare_taken_' + todayKey(), JSON.stringify(takenToday));
+    render();
+  }
+
+  function deletePill(id) {
+    pills = pills.filter(p => p.id !== id);
+    savePills();
+    render();
+    showToast('🗑️ Reminder removed');
+  }
+
+  function savePills() {
+    localStorage.setItem('pillcare_pills', JSON.stringify(pills));
+  }
+
+  // ── Render ────────────────────────────────────────────
+  function getNextDoseLabel(pill) {
+    if (takenToday[pill.id]) return { label: 'Taken ✓', cls: 'taken' };
+    const now = new Date();
+    const [h, m] = pill.time.split(':').map(Number);
+    const doseTime = new Date(now); doseTime.setHours(h, m, 0, 0);
+    const diff = (doseTime - now) / 60000; // minutes
+    if (diff < -5) return { label: 'Overdue', cls: 'overdue' };
+    if (diff <= 30) return { label: `In ${Math.max(0,Math.round(diff))} min`, cls: 'soon' };
+    const dh = Math.floor(diff/60), dm = Math.round(diff%60);
+    return { label: dh > 0 ? `${dh}h ${dm}m` : `${dm} min`, cls: 'upcoming' };
+  }
+
+  function freqLabel(f) {
+    return { daily:'Daily', twice:'2× Daily', weekly:'Weekly', custom:'Custom' }[f] || f;
+  }
+
+  function render() {
+    const list = document.getElementById('pillList');
+    const summary = document.getElementById('summaryBar');
+
+    if (!pills.length) {
+      summary.style.display = 'none';
+      list.innerHTML = `<div class="empty-state">
+        <div class="big-icon">💊</div>
+        <p>No medications added yet.<br>Add your first pill reminder above.</p>
+      </div>`;
+      return;
+    }
+
+    summary.style.display = 'flex';
+    const takenCount = pills.filter(p => takenToday[p.id]).length;
+    document.getElementById('statTotal').textContent = pills.length;
+    document.getElementById('statTaken').textContent = takenCount;
+    document.getElementById('statDue').textContent = pills.length - takenCount;
+
+    // Sort: overdue first, then by time
+    const sorted = [...pills].sort((a, b) => {
+      const aOver = !takenToday[a.id] && isOverdue(a);
+      const bOver = !takenToday[b.id] && isOverdue(b);
+      if (aOver && !bOver) return -1;
+      if (!aOver && bOver) return 1;
+      return a.time.localeCompare(b.time);
+    });
+
+    list.innerHTML = sorted.map(p => {
+      const nd = getNextDoseLabel(p);
+      const isTaken = !!takenToday[p.id];
+      return `<div class="pill-card ${isTaken ? 'taken' : ''}">
+        <div class="pill-color-dot" style="background:${p.color};color:${p.color}"></div>
+        <div class="pill-info">
+          <div class="pill-name">${esc(p.name)}</div>
+          <div class="pill-meta">
+            <span class="pill-tag">🕐 ${p.time}</span>
+            ${p.dose ? `<span class="pill-tag">💊 ${esc(p.dose)}</span>` : ''}
+            <span class="pill-tag">📅 ${freqLabel(p.freq)}</span>
+          </div>
+        </div>
+        <span class="next-dose ${nd.cls}">${nd.label}</span>
+        <div class="pill-actions">
+          <button class="icon-btn take-btn ${isTaken ? 'taken-check' : ''}" title="${isTaken ? 'Undo' : 'Mark taken'}" onclick="markTaken('${p.id}')">
+            ${isTaken ? '✓' : '○'}
+          </button>
+          <button class="icon-btn del-btn" title="Delete" onclick="deletePill('${p.id}')">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  }
+
+  function isOverdue(pill) {
+    const now = new Date();
+    const [h, m] = pill.time.split(':').map(Number);
+    const d = new Date(now); d.setHours(h, m, 0, 0);
+    return (now - d) / 60000 > 5;
+  }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Toast ─────────────────────────────────────────────
+  let toastTimeout;
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    document.getElementById('toastMsg').textContent = msg;
+    t.classList.add('show');
+    clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => t.classList.remove('show'), 3000);
+  }
+
+  // ── Re-render every minute (update dose labels) ───────
+  setInterval(render, 60000);
+
+  // ── Init ──────────────────────────────────────────────
+  render();
+
+  // Check if already granted
+  if (Notification.permission === 'granted') {
+    notifEnabled = true;
+    updateNotifBtn();
+    startReminderCheck();
+  }
+</script>
+</body>
+</html>
